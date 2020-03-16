@@ -1,0 +1,40 @@
+/*используется в пикассо для закругления картинки
+* */
+public class PicassoCircleTransform implements com.squareup.picasso.Transformation {
+    private final int radius;
+    private final int margin;
+
+    public PicassoCircleTransform(final int radius, final int margin) {
+        this.radius = radius;
+        this.margin = margin;
+    }
+
+    @Override
+    public Bitmap transform(final Bitmap source) {
+        final Paint paint = new Paint();
+        paint.setAntiAlias(true);
+        paint.setShader(new BitmapShader(source, Shader.TileMode.CLAMP,
+                Shader.TileMode.CLAMP));
+
+        Bitmap output = Bitmap.createBitmap(source.getWidth(), source.getHeight(),
+                Bitmap.Config.ARGB_8888);
+
+        Canvas canvas = new Canvas(output);
+
+        canvas.drawRoundRect(new RectF(margin, margin, source.getWidth() - margin,
+                source.getHeight() - margin), 0, 0, paint);
+        //рх и ру указал ноль, но можно так же указать радиус ,
+        // это закругление снизу справа и слева соотв
+
+
+        if (source != output) {
+            source.recycle();
+        }
+        return output;
+    }
+
+    @Override
+    public String key() {
+        return "rounded(r=" + radius + ", m=" + margin + ")";
+    }
+}
