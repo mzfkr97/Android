@@ -1,0 +1,390 @@
+/**
+ *
+ * Main Activity  for the Slutsk Transports
+ *
+ * @author Zhurid Roman
+ * @version versionName "2.507"
+ * Environment: Android Studio
+ * Created on 19.09.2016
+ *
+ */
+
+public class DrawerMain extends BaseActivity implements
+    NavigationView.OnNavigationItemSelectedListener {
+
+
+    private static final String ACTION_BUS = "com.slutsk.roman.slutsktransp.ACTION_BUS";
+    private static final String ACTION_HEALTH = "com.slutsk.roman.slutsktransp.HEALTH";
+    private static final String ACTION_CINEMA = "com.slutsk.roman.slutsktransp.CINEMA";
+    private static final String ACTION_NEWS = "com.slutsk.roman.slutsktransp.NEWS";
+    private static final int EXIT_PERIOD = 1500;
+    private int SETTINGS_ACTION = 1;
+
+    private ImageView tvImage;
+    private boolean doubleBackToExitPressedOnce = false;
+    private Toolbar toolbar;
+    private ActionBarDrawerToggle actionBarDrawerToggle;
+
+    private DrawerLayout drawerLayout;
+    private Fragment fragment = null;
+    private FragmentManager fragmentManager;
+    private TextView
+        cityField,
+        tvTemp,
+        textCurrency;
+    private View header;
+    private ProgressBar progressBarWeather;
+    private Handler handler = new Handler();
+    private RXConnector rxConnector;
+    private NavigationView navigationView;
+    private CompositeDisposable compositeDisposable = new CompositeDisposable();
+    private HolidaysDialog happyNewYearDialog;
+    private boolean noConnection;
+    private LoaderFragment loaderFragment;
+    private MyDatabase database;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.drawer_main);
+        //checkPermission();
+
+        AdManager adManager = AdManager.getInstance();
+        adManager.createAd(DrawerMain.this);
+
+        rxConnector = ((MyApplication) getApplication()).getRxConnector();
+        loaderFragment = ((MyApplication) getApplication()).getLoaderFragment();
+        database = ((MyApplication) getApplication()).getDatabase();
+
+        fragmentManager = getSupportFragmentManager();
+        toolbar = findViewById(R.id.toolbarDrawer);
+        drawerLayout = findViewById(R.id.drawer_layout);
+        setSupportActionBar(toolbar);
+        toolbar.setTitleTextAppearance(this, R.style.RobotoBoldTextAppearance);
+        noConnection = !NetworkChecker.isNetworkAvailable(DrawerMain.this);
+        initDrawer(toolbar);
+
+        navigationView = findViewById(R.id.nav_view);
+        if (savedInstanceState == null) {
+            loaderFragment.loadFragment(Container_Taxi.newInstance(), fragmentManager);
+        }
+        navigationView.setNavigationItemSelectedListener(this);
+        disableNavigationViewScrollbars(navigationView);//убираем скроллбар
+        header = navigationView.getHeaderView(0);  // Наполняем шапку элементами
+
+        navigationHeaderViewInit();
+        getWeather();
+        getCurrency();
+        //checkWhatsNew();
+        if (noConnection) {
+            showToast(getString(R.string.connection_error));
+        }
+
+        getShortCutsIntents();
+    }
+
+
+    private void getShortCutsIntents() {
+        final String action = getIntent().getAction();
+        if (action != null) {
+            switch (action) {
+                case ACTION_BUS:
+                    fragment = Container_Bus.newInstance();
+                    hideDrawerLayout();
+                    break;
+                case ACTION_HEALTH:
+                    fragment = Container_Health.newInstance();
+                    hideDrawerLayout();
+                    break;
+                case ACTION_CINEMA:
+                    fragment = Fragment_Cinema.newInstance();
+                    hideDrawerLayout();
+                    break;
+                case ACTION_NEWS:
+                    fragment = Container_News.newInstance();
+                    hideDrawerLayout();
+                    break;
+
+            }
+            loadFragment(fragment);
+
+        }
+
+
+    }
+
+    private void hideDrawerLayout() {
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+        }
+    }
+
+
+    private void checkWhatsNew() {
+        WhatsNew whatsNew = WhatsNew.newInstance(
+            new WhatsNewItem("Обновленная тема оформления:", "Классический синий 2020", R.drawable.what_new_done),
+            new WhatsNewItem("ЦРБ:", "Обновилась информация в справочнике", R.drawable.what_new_done),
+            new WhatsNewItem("Обратите внимание:", "Вся информация предоставлена для ознакомления.\n" +
+                "        \nЕсли вы заметили какую-либо неточность, пожалуйста, сообщая о ней, прикладывайте подробное описание и уточнение." +
+                "Это ускорит процесс исправления.", WhatsNewItem.NO_IMAGE_RES_ID));
+        whatsNew.setTitleColor(ContextCompat.getColor(this, R.color.colorPrimary));
+        whatsNew.setTitleText("Что нового в этой версии:");
+        whatsNew.setButtonBackground(ContextCompat.getColor(this, R.color.colorPrimary));
+        whatsNew.setButtonText("Поехали!");
+        whatsNew.presentAutomatically(DrawerMain.this);
+    }
+
+
+    private void showToast(String toastMessage) {
+        Toast.makeText(this, toastMessage, Toast.LENGTH_LONG).show();
+    }
+
+    //отключаем скролл в дравере
+    private void disableNavigationViewScrollbars(NavigationView navigationView) {
+        if (navigationView != null) {
+            NavigationMenuView navigationMenuView = (NavigationMenuView) navigationView.getChildAt(0);
+            if (navigationMenuView != null) {
+                navigationMenuView.setVerticalScrollBarEnabled(false);
+            }
+        }
+    }
+
+    private void navigationHeaderViewInit() {
+        progressBarWeather = header.findViewById(R.id.progressBarWeather);
+        progressBarWeather
+            .getIndeterminateDrawable()
+            .setColorFilter(ContextCompat
+                    .getColor(this, color.colorYellow_light),
+                PorterDuff.Mode.SRC_IN);
+        happyNewYearDialog = HolidaysDialog.newInstance();
+        progressBarWeather.setVisibility(View.VISIBLE);
+        tvImage = header.findViewById(R.id.ivImage);
+
+        cityField = header.findViewById(R.id.city_field);
+        textCurrency = header.findViewById(R.id.textCurrency);
+        tvTemp = header.findViewById(R.id.tvTemp);
+
+        textCurrency.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                getCurrency();
+                getWeather();
+            }
+        });
+    }
+
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_items, menu);
+        MenuItem searchItem = menu.findItem(R.id.action_search);
+        if (searchItem != null) {
+            SearchView searchView = (SearchView) menu.findItem(R.id.action_search).getActionView();
+            searchView.setQueryHint(getString(R.string.search));
+            searchView.requestFocus();
+            searchItem.setVisible(false);
+            searchItem.expandActionView();
+        }
+        return true;
+    }
+
+
+    @Override
+    public boolean onNavigationItemSelected(@NonNull MenuItem menuItem) {
+        int id = menuItem.getItemId();
+        /*проверяем выбран ли пункт или еще нет , что бы не откывать повторно*/
+        if (navigationView.getMenu().findItem(id).isChecked()) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+            return true;
+        }
+        switch (id) {
+            case R.id.bus:
+                fragment = Container_Bus.newInstance();
+                break;
+            case R.id.taxi:
+                fragment = Container_Taxi.newInstance();
+                break;
+            case R.id.railway:
+                fragment = Container_RailWay.newInstance();
+                break;
+            case R.id.automobile:
+                fragment = Container_Auto.newInstance();
+                break;
+            case R.id.medic:
+                fragment = Container_Health.newInstance();
+                break;
+            case R.id.dosug:
+                fragment = Container_Dosug.newInstance();
+                break;
+            case R.id.cinema:
+                fragment = Fragment_Cinema.newInstance();
+                break;
+            case R.id.shops:
+                fragment = Container_Finance.newInstance();
+                break;
+            case R.id.news:
+                fragment = Container_News.newInstance();
+                break;
+            case R.id.nav_send:
+                showSettings();
+                return true;
+            default:
+                break;
+        }
+
+        menuItem.setChecked(true);  //Выделяем пункт меню в шторке
+        setTitle(menuItem.getTitle());  //Выводим пункт в заголовке
+
+        drawerLayout.closeDrawer(GravityCompat.START);
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                loadFragment(fragment);
+            }
+        }, 400);
+        return true;
+    }
+
+    private void loadFragment(Fragment fragment) {
+        this.fragment = fragment;
+        loaderFragment.loadFragment(fragment, fragmentManager);
+    }
+
+
+    private void initDrawer(final Toolbar toolbar) {
+        actionBarDrawerToggle = new ActionBarDrawerToggle(this, drawerLayout, toolbar, string.navigation_drawer_open, string.navigation_drawer_close) {
+            @Override
+            public void onDrawerClosed(View drawerView) {
+                super.onDrawerClosed(drawerView);
+            }
+
+            @Override
+            public void onDrawerOpened(View drawerView) {
+                super.onDrawerOpened(drawerView);
+                //если открыт дравер прячем клаву с поиска
+                InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                if (getCurrentFocus() != null) {
+                    assert inputMethodManager != null;
+                    inputMethodManager.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
+                }
+            }
+        };
+        drawerLayout.addDrawerListener(actionBarDrawerToggle);
+        actionBarDrawerToggle.syncState();
+        drawerLayout.openDrawer(GravityCompat.START);
+    }
+
+    // применение темы ActivityResult
+    private void showSettings() {
+        startActivityForResult(new Intent(DrawerMain.this, Activity_Preference.class)
+            .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP), SETTINGS_ACTION);
+        overridePendingTransition(anim.animation2, anim.animation);
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == SETTINGS_ACTION) {
+            if (resultCode == Fragment_Preference.RESULT_CODE_THEME_UPDATED) {
+                finish();
+                startActivity(getIntent());
+                return;
+            }
+        }
+        super.onActivityResult(requestCode, resultCode, data);
+    }
+
+    @Override
+    public void onBackPressed() {
+        //кнопка назад если тулбар открыт  = закрывает если закрыт = выходим
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+        } else {
+            drawerLayout.isDrawerOpen(GravityCompat.END);
+        }
+        if (doubleBackToExitPressedOnce) {
+            super.onBackPressed();
+            return;
+        }
+        this.doubleBackToExitPressedOnce = true;
+        Snackbar.make(toolbar, string.exit, Snackbar.LENGTH_SHORT).show();
+
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                doubleBackToExitPressedOnce = false;
+            }
+        }, EXIT_PERIOD);
+    }
+
+    public void getCurrency() {
+        compositeDisposable.add(
+            rxConnector.getCurrencyApi()
+                .getCurrency()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeWith(new DisposableSingleObserver<Response_Currency>() {
+                    @SuppressLint("SetTextI18n")
+                    @Override
+                    public void onSuccess(@NonNull Response_Currency responseCurrency) {
+                        textCurrency.setText(responseCurrency.getCur_Abbreviation()
+                            + " : " + responseCurrency.getCur_OfficialRate());
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        textCurrency.setText(R.string.checkUrlConnection);
+                        progressBarWeather.setVisibility(View.INVISIBLE);
+                    }
+                }));
+    }
+
+    public void getWeather() {
+        progressBarWeather.setVisibility(View.VISIBLE);
+        String units = "metric", lang = "ru";
+        int city_id = 621741;
+
+        compositeDisposable.add(rxConnector.getWeatherAPI()
+            .getToday(city_id, lang, units, Constants.KEY_WEATHER)
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribeWith(new DisposableSingleObserver<Response_Weather>() {
+                @SuppressLint("SetTextI18n")
+                @Override
+                public void onSuccess(@NonNull Response_Weather weatherDay) {
+                    progressBarWeather.setVisibility(View.GONE);
+                    cityField.setText(getString(R.string.slutsk_city));
+                    tvTemp.setText(weatherDay.getTempWithDegree() + " ℃");
+                    Picasso.get().load(weatherDay.getIconUrl()).into(tvImage);
+                }
+
+                @Override
+                public void onError(Throwable e) {
+                    tvTemp.setText("--");
+                    progressBarWeather.setVisibility(View.GONE);
+                }
+            }));
+    }
+
+    //Последние три метода нужны для корректной работы ActionBarDrawerToggle.
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        return actionBarDrawerToggle.onOptionsItemSelected(item) || super.onOptionsItemSelected(item);
+    }
+
+    protected void onPostCreate(Bundle savedInstanceState) {
+        super.onPostCreate(savedInstanceState);
+        actionBarDrawerToggle.syncState();
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        actionBarDrawerToggle.onConfigurationChanged(newConfig);
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        compositeDisposable.clear();
+    }
+}
