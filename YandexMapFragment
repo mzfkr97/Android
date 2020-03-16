@@ -1,0 +1,142 @@
+public class YandexMapFragment extends Fragment implements View.OnClickListener {
+
+
+    private Double latitude, longitude;
+    private MapView mapview;
+    private String markerTitle;
+    private BottomSheetBehavior mBottomSheetBehavior;
+    private Button googleMap_button, yandex_button;
+    private TextView textBottomSheet;
+    private TextView textViewBottomHeader;
+
+    public static YandexMapFragment newInstance(
+            String title, String position, Double latitude, Double longitude) {
+
+        Bundle args = new Bundle();
+        args.putString(Constants.TITLE, title);
+        args.putString(Constants.SERVICE_TYPE, position);
+        args.putDouble(Constants.LATITUDE, latitude);
+        args.putDouble(Constants.LONGITUDE, longitude);
+        YandexMapFragment fragment = new YandexMapFragment();
+        fragment.setArguments(args);
+        return fragment;
+    }
+
+    @Nullable
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        View view = inflater.inflate(R.layout.yandex_map, container, false);
+        myViewInit(view );
+
+
+        assert getArguments() != null;
+        markerTitle = getArguments().getString(Constants.TITLE);
+        String author = getArguments().getString(Constants.SERVICE_TYPE);
+        markerTitle = getArguments().getString(Constants.TITLE);
+        latitude = getArguments().getDouble(Constants.LATITUDE);
+        longitude = getArguments().getDouble(Constants.LONGITUDE);
+
+        Point current_point = new Point(latitude, longitude);
+
+
+        if (nightModeCheck()) {
+            mapview.getMap().setNightModeEnabled(true);
+        }
+        mapview.getMap().getLogo().setAlignment(new Alignment(HorizontalAlignment.RIGHT, VerticalAlignment.TOP));
+        mapview.getMap().getMapObjects().addPlacemark(current_point, ImageProvider.fromResource(getActivity(), R.drawable.yandex_placemark));
+        // mapObjects = mapview.getMap().getMapObjects().addCollection();
+        mapview.getMap().setRotateGesturesEnabled(false);
+        //mapview.getMap().getLogo().setAlignment(new Alignment(HorizontalAlignment.LEFT, VerticalAlignment.TOP));
+        mapview.getMap().move(
+                new CameraPosition(current_point, 16.0f, 0.0f, 0.0f),
+                new Animation(Animation.Type.SMOOTH, 0),
+                null);
+
+        textBottomSheet.setText(author);
+        textViewBottomHeader.setText(markerTitle);
+
+        googleMap_button.setOnClickListener(this);
+        yandex_button.setOnClickListener(this);
+
+        return view;
+    }
+
+    private void myViewInit(View view) {
+        mapview = view.findViewById(R.id.mapview);
+
+        View bottom_sheet_layout = view.findViewById(R.id.bottom_sheet_layout);
+        textBottomSheet = view.findViewById(R.id.textBottomSheet);
+        textViewBottomHeader = view.findViewById(R.id.textViewBottomHeader);
+        googleMap_button = view.findViewById(R.id.googleMap_button);
+        yandex_button = view.findViewById(R.id.yandex_button);
+        mBottomSheetBehavior = BottomSheetBehavior.from(bottom_sheet_layout);
+        mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+        // настройка возможности скрыть элемент при свайпе вниз
+        mBottomSheetBehavior.setHideable(false);
+        // настройка максимальной высоты
+        mBottomSheetBehavior.setPeekHeight(110);
+        bottom_sheet_layout.setOnClickListener(this);
+
+    }
+
+
+
+    private boolean nightModeCheck() {
+        ColorMaker colorNight = new ColorMaker(getActivity());
+        return colorNight.nightMode();
+    }
+
+    @Override
+    public void onClick(View view) {
+        switch (view.getId()) {
+            case R.id.bottom_sheet_layout:
+                toggleBottomSheet();
+                break;
+            case R.id.googleMap_button:
+                new MapsHelper().openGoogleMaps(getActivity(),markerTitle, latitude, longitude);
+                break;
+            case R.id.yandex_button:
+                new MapsHelper().openYandexNav(getActivity(), latitude, longitude);
+                break;
+        }
+    }
+
+
+
+    //клик на кнопку ели открыт то прячем и наоборот
+    private void toggleBottomSheet() {
+        switch (mBottomSheetBehavior.getState()) {
+            case BottomSheetBehavior.STATE_HIDDEN:
+                break;
+            case BottomSheetBehavior.STATE_EXPANDED:
+                mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+                break;
+            case BottomSheetBehavior.STATE_COLLAPSED:
+                mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+                break;
+            case BottomSheetBehavior.STATE_DRAGGING:
+                break;
+            case BottomSheetBehavior.STATE_HALF_EXPANDED:
+                break;
+            case BottomSheetBehavior.STATE_SETTLING:
+                break;
+            default:
+                break;
+        }
+    }
+
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        mapview.onStop();
+        MapKitFactory.getInstance().onStop();
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        mapview.onStart();
+        MapKitFactory.getInstance().onStart();
+    }
+}
