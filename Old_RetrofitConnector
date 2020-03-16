@@ -1,0 +1,40 @@
+ //*тут не использовалась FragmentChange JAVA */
+
+    private static Retrofit retrofit = null;
+    private Context context;
+
+    public Old_RetrofitConnector(Context context) {
+        this.context = context;
+    }
+
+    /** getXMLRetrofitClient
+    xml приходит в некоторых ответах , в
+     * чвстности в поездах
+     *
+     * */
+
+    public static Retrofit getRetrofitClient(String url) {
+        retrofit = new Retrofit.Builder()
+                .baseUrl(url).client(okHttpClient)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+        return retrofit;
+    }
+
+    public static Retrofit getXMLRetrofitClient(String url) {
+
+        retrofit = new Retrofit.Builder()
+                .baseUrl(url).client(okHttpClient)
+                .addConverterFactory(SimpleXmlConverterFactory.create())
+                .build();
+        return retrofit;
+    }
+
+    private static OkHttpClient okHttpClient = new OkHttpClient.Builder()
+            .connectTimeout(1, TimeUnit.MINUTES)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build();
+
+
+
+}
