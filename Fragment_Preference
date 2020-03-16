@@ -1,0 +1,223 @@
+public class Fragment_Preference extends android.preference.PreferenceFragment
+    implements
+    SharedPreferences.OnSharedPreferenceChangeListener,
+    Preference.OnPreferenceClickListener,
+    Preference.OnPreferenceChangeListener {
+
+    public static final int RESULT_CODE_THEME_UPDATED = 1;
+    public static final String
+        MARKET_APP_URL = "https://play",
+        PRIVACY_URL = "https://gist.githubusercontent.cob763c8e09b6be070b022a59389ebf5/Privacy%20Policy%20SLTR",
+        URL_YANDEX_PRIVACY = "https://yandex.ru/legal/maps_termsofuse/",
+        FEED_BACK = "feedBack",
+        RATE_US = "rate_app",
+        PRIVACY_POLICE = "privacy_police",
+        CLEAR_CACHE = "clear_cache",
+        VERSION_PREFERENCE = "versionPref",
+        PRIVACY_YANDEX_MAP = "privacy_yandex_map",
+        MAP_SWITCH = "switch_yandex_map",
+        PREF_SHARE = "pref_share",
+        REWARDED_DISABLE = "disable_adw_from_reward";
+
+    private Preference
+        versionPref, rate_us,
+        privacy_police, hints_button, clear_cache, privacy_yandex_map, pref_share, disable_adw_from_reward;
+    //private int i = 0;
+    private boolean enable_ADW;
+    private SharedPreferences sharedPreferences;
+    private AdvertiseCounter advertiseCounter;
+    private RewardedAd rewardedAd;
+
+    @Override
+    public void onCreate(final Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        addPreferencesFromResource(R.xml.settings);
+
+        findPreference(Constants.THEME).setOnPreferenceChangeListener(this);
+        advertiseCounter = ((MyApplication) getActivity().getApplication()).getAdvertiseCounter();
+        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
+
+        findPreference();
+
+        enable_ADW = advertiseCounter.showAdvertise();
+        rewardedAd = new RewardedAd(getActivity(), getString(R.string.rewarded_unit_id));
+
+        if (advertiseCounter.showAdvertise()) {
+            createAndLoadRewardedAd();
+        } else {
+            disable_adw_from_reward.setSummary(
+                "Отключено до: " +
+                    advertiseCounter.getExpirationDate()
+            );
+        }
+
+
+    }
+
+    public RewardedAd createAndLoadRewardedAd() {
+        rewardedAd = new RewardedAd(getActivity(), getString(R.string.rewarded_unit_id));
+        RewardedAdLoadCallback adLoadCallback = new RewardedAdLoadCallback() {
+            @Override
+            public void onRewardedAdLoaded() {
+                disable_adw_from_reward.setSummary("Реклама готова к просмотру");
+            }
+
+            @Override
+            public void onRewardedAdFailedToLoad(int errorCode) {
+                disable_adw_from_reward.setSummary("Ошибка при загрузке рекламы :(");
+            }
+        };
+        rewardedAd.loadAd(new AdRequest.Builder().build(), adLoadCallback);
+        return rewardedAd;
+    }
+
+
+    private void findPreference() {
+        privacy_police = findPreference(PRIVACY_POLICE);
+        versionPref = findPreference(VERSION_PREFERENCE);
+        versionPref.setSummary(BuildConfig.VERSION_NAME);
+
+        rate_us = findPreference(RATE_US);
+        hints_button = findPreference(FEED_BACK);
+        clear_cache = findPreference(CLEAR_CACHE);
+        privacy_yandex_map = findPreference(PRIVACY_YANDEX_MAP);
+        disable_adw_from_reward = findPreference(REWARDED_DISABLE);
+        pref_share = findPreference(PREF_SHARE);
+
+        privacy_police.setOnPreferenceClickListener(this);
+        versionPref.setOnPreferenceClickListener(this);
+        rate_us.setOnPreferenceClickListener(this);
+        hints_button.setOnPreferenceClickListener(this);
+        clear_cache.setOnPreferenceClickListener(this);
+        privacy_yandex_map.setOnPreferenceClickListener(this);
+        disable_adw_from_reward.setOnPreferenceClickListener(this);
+        pref_share.setOnPreferenceClickListener(this);
+    }
+
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        View view = super.onCreateView(inflater, container, savedInstanceState);
+        SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        String themeName = pref.getString(Constants.THEME, Constants.THEME_LIGHT);
+
+        if (themeName.equals(Constants.THEME_DARK)) {
+            assert view != null;
+            view.setBackgroundColor(ContextCompat.getColor(getActivity(), R.color.cardViewColorBackground_dark));
+        }
+
+        return view;
+    }
+
+
+    @Override
+    public boolean onPreferenceClick(Preference preference) {
+        switch (preference.getKey()) {
+            case RATE_US:
+                startActivity(new Intent(Intent.ACTION_VIEW).setData(Uri.parse(MARKET_APP_URL)));
+                break;
+            case FEED_BACK:
+                Intent intent = new Intent(Intent.ACTION_SENDTO, Uri.fromParts("mailto", "slutskapp@gmail.com", null));
+                intent.putExtra(Intent.EXTRA_TEXT, "\n\nВерсия приложения " + BuildConfig.VERSION_NAME);
+                startActivity(Intent.createChooser(intent, "Выберите способ отправки:"));
+                break;
+            case CLEAR_CACHE:
+                clearDatabase();
+                advertiseCounter.enableADW();
+                enable_ADW = true;
+                break;
+            case PRIVACY_POLICE:
+                CustomTabs.openTab(getActivity(), PRIVACY_URL);
+                break;
+            case PRIVACY_YANDEX_MAP:
+                CustomTabs.openTab(getActivity(), URL_YANDEX_PRIVACY);
+                break;
+            case REWARDED_DISABLE:
+                if (enable_ADW && rewardedAd.isLoaded()) {
+                    RewardedAdCallback adCallback = new RewardedAdCallback() {
+                        @Override
+                        public void onRewardedAdClosed() {
+                            rewardedAd = createAndLoadRewardedAd();
+                        }
+                        @Override
+                        public void onUserEarnedReward(@NonNull RewardItem reward) {
+                            // User earned reward. Этот метод вызывается, когда пользователь должен быть вознагражден за взаимодействие с рекламой.
+                            enable_ADW = false;
+                            advertiseCounter.disableADW();
+                            showToast("Реклама в приложении отключена");
+                        }
+
+
+                    };
+                    rewardedAd.show(getActivity(), adCallback);
+
+                } else {
+                    Log.d("TAG", "The rewarded ad wasn't loaded yet.");
+                }
+                break;
+            case PREF_SHARE:
+                Intent sendIntent = new Intent();
+                sendIntent.setAction(Intent.ACTION_SEND);
+                sendIntent.putExtra(Intent.EXTRA_TEXT, getString(R.string.slutskActionSend));
+                sendIntent.setType("text/plain");
+                startActivity(Intent.createChooser(sendIntent, getString(R.string.sendFriends)));
+                break;
+        }
+        return true;
+    }
+
+
+
+    private void clearDatabase() {
+        MyDatabase db = ((MyApplication) getActivity().getApplication()).getDatabase();
+        db.clearDB();
+        showSnack("База данных обновлена");
+    }
+
+    @Override
+    public boolean onPreferenceChange(Preference preference, Object newValue) {
+        //getActivity().setResult(RESULT_CODE_THEME_UPDATED);
+        return true;
+    }
+
+
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        switch (key) {
+            case Constants.THEME:
+                getActivity().setResult(RESULT_CODE_THEME_UPDATED);
+                getActivity().finish();
+                startActivity(new Intent(getActivity(), DrawerMain.class)
+                    .setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK));
+                getActivity().overridePendingTransition(R.anim.close, R.anim.closein);
+                break;
+            case MAP_SWITCH:
+                showSnack("Карта изменена");
+                break;
+        }
+    }
+
+    public void showSnack(String snack_message) {
+        Snackbar snackbar = Snackbar.make(getActivity().findViewById(android.R.id.content), snack_message, Snackbar.LENGTH_LONG);
+        View snackBarView = snackbar.getView();
+        TextView textView = snackBarView.findViewById(com.google.android.material.R.id.snackbar_text);
+        textView.setTextColor(ContextCompat.getColor(getActivity(), android.R.color.white));
+        snackbar.show();
+    }
+
+    private void showToast(String toastMessage) {
+        Toast.makeText(getActivity(), toastMessage, Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onResume() {
+        getPreferenceManager().getSharedPreferences().registerOnSharedPreferenceChangeListener(this);
+        super.onResume();
+    }
+
+    @Override
+    public void onPause() {
+        getPreferenceManager().getSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
+        super.onPause();
+    }
+}
