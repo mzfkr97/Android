@@ -1,0 +1,34 @@
+public class AdManager {
+    // Static fields are shared between all instances.
+    //https://stackoverflow.com/questions/26852032/how-to-preload-admob-interstitial-ad-and-send-to-another-android-activity-using
+    private static InterstitialAd interstitialAd;
+    private static AdManager singleton;
+
+    private final static String AD_INTERSTITIAL_ID = "ca-app-pub-99751278822";
+    private final static String AD_INTERSTITIAL_ID_TEST_MODUL = "ca-app-pub-3";
+
+    public AdManager() {
+    }
+
+    public static AdManager getInstance() {
+        if (singleton == null) {
+            singleton = new AdManager();
+        }
+
+        return singleton;
+    }
+
+
+    public static void createAd(Context context) {
+        interstitialAd = new InterstitialAd(context);
+        interstitialAd.setAdUnitId(AD_INTERSTITIAL_ID);
+        interstitialAd.loadAd(new AdRequest.Builder()
+            .addTestDevice(AdRequest.DEVICE_ID_EMULATOR)
+            .build());
+    }
+
+    public static InterstitialAd getAd() {
+        return interstitialAd;
+    }
+
+}
