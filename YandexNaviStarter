@@ -1,0 +1,41 @@
+public class YandexNaviStarter {
+
+    private final String PRIVATE_KEY = "l,l";
+    private Context context;
+
+    // Формирует подпись с помощью ключа.
+    public String sha256rsa(String key, String data) throws SecurityException {
+        String trimmedKey = key.replaceAll("-----\\w+ PRIVATE KEY-----", "")
+            .replaceAll("\\s", "");
+
+        try {
+            byte[]         result    = Base64.decode(trimmedKey, Base64.DEFAULT);
+            KeyFactory factory   = KeyFactory.getInstance("RSA");
+            EncodedKeySpec keySpec   = new PKCS8EncodedKeySpec(result);
+            Signature      signature = Signature.getInstance("SHA256withRSA");
+            signature.initSign(factory.generatePrivate(keySpec));
+            signature.update(data.getBytes());
+
+            byte[] encrypted = signature.sign();
+            return Base64.encodeToString(encrypted, Base64.NO_WRAP);
+        } catch (Exception e) {
+            throw new SecurityException("E calculating cipher data. SIC!");
+        }
+    }
+
+    // Формирует URI с подписью и запускает Яндекс.Навигатор.
+    public void buildRoute(Context context) {
+        Uri uri = Uri.parse("yandexnavi://build_route_on_map").buildUpon()
+            .appendQueryParameter("lat_to", "55.680559")
+            .appendQueryParameter("lon_to", "37.549246")
+            .appendQueryParameter("client", "007").build();
+
+        uri = uri.buildUpon()
+            .appendQueryParameter("signature", sha256rsa(PRIVATE_KEY, uri.toString()))
+            .build();
+
+        Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+        intent.setPackage("ru.yandex.yandexnavi");
+        context.startActivity(intent);
+    }
+}
