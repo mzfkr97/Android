@@ -1,0 +1,11 @@
+
+public class AnimationShakeHelper {
+
+    public void slideToBottom(Context context, View view){
+        Animation shake = AnimationUtils.loadAnimation(context, R.anim.shake);
+        if (view.getVisibility() == View.GONE) {
+            view.setVisibility(View.VISIBLE);
+            view.startAnimation(shake);
+        }
+    }
+}
