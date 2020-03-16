@@ -1,0 +1,52 @@
+public class MapsHelper {
+
+    public void openGoogleMaps(Context context, String markerTitle, Double latitude, Double longitude) {
+        Uri gmmIntentUri = Uri.parse(getUrl(markerTitle, latitude, longitude));
+        Intent intent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
+        intent.setPackage("com.google.android.apps.maps");
+        if (intent.resolveActivity(context.getPackageManager()) != null) {
+            context.startActivity(intent);
+        } else {
+            CustomTabs.openTab(context, getUrlChromeTabs(markerTitle, latitude, longitude));
+        }
+
+    }
+
+    private String getUrlChromeTabs(String markerTitle, Double latitude, Double longitude){
+        return "https://www.google.com/maps/search/?api=1&query="+markerTitle +
+                "+Слуцк&query_place_id="+latitude + ","+ longitude;
+    }
+
+    private String getUrl(String markerTitle, Double latitude, Double longitude){
+        return "geo:"+ latitude + ","+ longitude + "?q=" + markerTitle+ "+Слуцк";
+    }
+
+
+    public void openYandexNav(Context context, Double latitude, Double longitude) {
+        //https://yandex.ru/dev/yandex-apps-launch/navigator/doc/concepts/navigator-url-params-docpage/#navigator-url-params__point
+        //https://yandex.ru/dev/yandex-apps-launch/navigator/doc/concepts/navigator-url-params-docpage/
+        Uri uri = Uri.parse(getYandexURI(latitude, longitude));
+        Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+        intent.setPackage("ru.yandex.yandexnavi");
+
+        // Проверяет, установлено ли приложение.
+        PackageManager packageManager = context.getPackageManager();
+        List<ResolveInfo> activities = packageManager.queryIntentActivities(intent, 0);
+        boolean isIntentSafe = activities.size() > 0;
+        if (isIntentSafe) {
+            //Запускает Яндекс.Навигатор.
+            context.startActivity(intent);
+        } else {
+            // Открывает страницу Яндекс.Навигатора в Google Play.
+            intent = new Intent(Intent.ACTION_VIEW);
+            intent.setData(Uri.parse("market://details?id=ru.yandex.yandexnavi"));
+            context.startActivity(intent);
+        }
+
+    }
+
+    private String getYandexURI(Double latitude, Double longitude ) {
+        return "yandexnavi://show_point_on_map?lat=" + latitude + "&lon=" + longitude + "&zoom=16&no-balloon=0";
+    }
+
+}
