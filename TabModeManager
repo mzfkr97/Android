@@ -1,0 +1,46 @@
+public class TabModeManager {
+
+    /*
+     * Эта штука возвращает высоту экрана для вью пейджера {displaySizeInches()}
+     * и если высота больше 1000  то меняем режим арказа табов
+     *  tabLayout.setTabMode(new TabModeManager().getTabMode());
+     */
+
+
+    public int getTabMode() {
+        if (displaySizeInches() <= 5.2)
+            return TabLayout.MODE_SCROLLABLE;
+        else {
+            return TabLayout.MODE_FIXED;
+        }
+    }
+
+//    private int displaySize(){
+//        DisplayMetrics metrics;
+//        metrics = Resources.getSystem().getDisplayMetrics();
+//        return metrics.heightPixels;
+//
+//    }
+
+    /*
+     * этот метод возвращает дюймы
+     */
+
+    private double displaySizeInches() {
+        DisplayMetrics metrics;
+        metrics = Resources.getSystem().getDisplayMetrics();
+        int height = metrics.heightPixels;
+        int width = metrics.widthPixels;
+
+        double wi = (double) width / (double) metrics.xdpi;
+        double hi = (double) height / (double) metrics.ydpi;
+
+        double x = Math.pow(wi, 2);
+        double y = Math.pow(hi, 2);
+       // double screenInches = Math.sqrt(x + y);
+        //return metrics.heightPixels;
+        return Math.sqrt(x + y);
+
+    }
+
+}
