@@ -1,0 +1,169 @@
+public class GoogleMapFragment extends Fragment
+        implements OnMapReadyCallback,
+View.OnClickListener, GoogleMap.OnInfoWindowClickListener {
+
+
+    private BottomSheetBehavior mBottomSheetBehavior;
+    private GoogleMap mMap;
+
+    private String markerTitle, author;
+    private Button googleMap_button, yandex_button;
+
+    private String themeName;
+    private Double latitude, longitude;
+
+    private View bottom_sheet_layout;
+    private TextView textBottomSheet;
+    private TextView textViewBottomHeader;
+
+    public static GoogleMapFragment newInstance(String markerTitle, String position, Double latitude, Double longitude) {
+
+        Bundle args = new Bundle();
+        args.putString(Constants.TITLE, markerTitle);
+        args.putString(Constants.SERVICE_TYPE, position);
+        args.putDouble(Constants.LATITUDE, latitude);
+        args.putDouble(Constants.LONGITUDE, longitude);
+
+        GoogleMapFragment fragment = new GoogleMapFragment();
+        fragment.setArguments(args);
+        return fragment;
+    }
+
+    @Nullable
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        View view = inflater.inflate(R.layout.map_fragment, container, false);
+        myViewInit(view );
+        SupportMapFragment mapFragment = (SupportMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
+        if (mapFragment != null) {
+            mapFragment.getMapAsync(this);
+        }
+
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        themeName = preferences.getString(Constants.THEME, Constants.THEME_LIGHT);
+
+        mBottomSheetBehavior = BottomSheetBehavior.from(bottom_sheet_layout);
+        mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+        // настройка возможности скрыть элемент при свайпе вниз
+        mBottomSheetBehavior.setHideable(false);
+        // настройка максимальной высоты
+        mBottomSheetBehavior.setPeekHeight(110);
+
+        if(getArguments() != null){
+            markerTitle = getArguments().getString(Constants.TITLE);
+            author = getArguments().getString(Constants.SERVICE_TYPE);
+            markerTitle = getArguments().getString(Constants.TITLE);
+            latitude = getArguments().getDouble(Constants.LATITUDE);
+            longitude = getArguments().getDouble(Constants.LONGITUDE);
+        }
+
+
+
+        textBottomSheet.setText(author);
+        textViewBottomHeader.setText(markerTitle);
+
+        bottom_sheet_layout.setOnClickListener(this);
+        //fab.setOnClickListener(this);
+        googleMap_button.setOnClickListener(this);
+        yandex_button.setOnClickListener(this);
+        return view;
+    }
+
+    private void myViewInit(View view) {
+        bottom_sheet_layout = view.findViewById(R.id.bottom_sheet_layout);
+        textBottomSheet = view.findViewById(R.id.textBottomSheet);
+        textViewBottomHeader = view.findViewById(R.id.textViewBottomHeader);
+        googleMap_button = view.findViewById(R.id.googleMap_button);
+        yandex_button = view.findViewById(R.id.yandex_button);
+
+    }
+
+    @Override
+    public void onMapReady(final GoogleMap googleMap) {
+        this.mMap = googleMap;
+        final LatLng position = new LatLng(latitude, longitude);
+
+        try {
+            if (getActivity()!= null && nightModeCheck()) {
+                googleMap.setMapStyle(MapStyleOptions.loadRawResourceStyle(getActivity(), R.raw.style_json_night));
+            }
+        } catch (Resources.NotFoundException e) {
+            Log.d("TAG", "onMapReady: " + e);
+        }
+
+        if (mMap != null) {
+            mMap.setOnInfoWindowClickListener(this);
+            mMap.setPadding(0, 0, 0, 200);//поднял fab выше для bottomSheet
+            mMap.getUiSettings().setZoomControlsEnabled(false);
+            mMap.getUiSettings().setMapToolbarEnabled(true);//Панель инструментов карты
+            mMap.getUiSettings().setCompassEnabled(false);
+            mMap.getUiSettings().setRotateGesturesEnabled(false);
+            mMap.addMarker(new MarkerOptions().position(position).title(markerTitle)).showInfoWindow();
+        }
+        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(position, 15);
+        mMap.moveCamera(cameraUpdate);
+    }
+
+    private boolean nightModeCheck() {
+        return themeName.equals(Constants.THEME_DARK);
+    }
+
+
+
+    @Override
+    public void onInfoWindowClick(Marker marker) {
+        toggleBottomSheet();
+    }
+
+    @Override
+    public void onClick(View view) {
+        switch (view.getId()) {
+            case R.id.bottom_sheet_layout:
+                toggleBottomSheet();
+                break;
+            case R.id.yandex_button:
+                new MapsHelper().openYandexNav(getActivity(), latitude, longitude);
+                break;
+            case R.id.googleMap_button:
+                new MapsHelper().openGoogleMaps(getActivity(),markerTitle, latitude, longitude);
+                break;
+        }
+    }
+
+
+
+    //клик на кнопку ели открыт то прячем и наоборот
+    private void toggleBottomSheet() {
+        switch (mBottomSheetBehavior.getState()) {
+            case BottomSheetBehavior.STATE_HIDDEN:
+                break;
+            case BottomSheetBehavior.STATE_EXPANDED:
+                mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+                break;
+            case BottomSheetBehavior.STATE_COLLAPSED:
+                mBottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+                break;
+            default:
+                break;
+            case BottomSheetBehavior.STATE_DRAGGING:
+                break;
+            case BottomSheetBehavior.STATE_HALF_EXPANDED:
+                break;
+            case BottomSheetBehavior.STATE_SETTLING:
+                break;
+        }
+    }
+
+
+
+//
+//    private void animateFAB() {
+//        if (isFabOpen) {
+//            fab.startAnimation(fab_rotate_backward);
+//            isFabOpen = false;
+//        } else {
+//            fab.startAnimation(fab_rotate_forward);
+//            isFabOpen = true;
+//        }
+//    }
+}
