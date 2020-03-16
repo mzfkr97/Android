@@ -1,0 +1,45 @@
+
+/**
+ * в этой активити установлена тема приложения,
+ * все остальные наследуются от нее.
+ * она не обьявлена в манивесте
+ * главная же тема {@link DrawerMain}
+ */
+@SuppressLint("Registered")
+public class BaseActivity extends AppCompatActivity {
+
+    private String themeName;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        checkStartUpTheme();//проверяем тему из настроек
+        super.onCreate(savedInstanceState);
+    }
+
+    public void checkStartUpTheme() {
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        themeName = sharedPreferences.getString(Constants.THEME, Constants.THEME_LIGHT);
+        int themeId = 0;
+        assert themeName != null;
+        switch (themeName) {
+            case Constants.THEME_LIGHT:
+                themeId = R.style.Default_theme;
+                break;
+            case Constants.THEME_DARK:
+                themeId = R.style.Dark_theme;
+                break;
+            default:
+                break;
+        }
+        setTheme(themeId);
+
+    }
+
+
+
+    public boolean checkNightMode() {
+        return themeName.equals(Constants.THEME_DARK);
+    }
+
+
+}
