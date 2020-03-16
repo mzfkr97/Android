@@ -1,0 +1,111 @@
+public class Adapter_News extends RecyclerView.Adapter<Adapter_News.ScienceViewHolder> {
+
+
+    private static final String RESPONSE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss"; // "2018-10-27T06:34:39+00:00",
+    private static final String MY_FORMAT = "EEEE, dd MMM HH:mm";
+
+    private List<NewsPojo.Articles> newsPojoList;
+    private Context context;
+
+    Adapter_News(List<NewsPojo.Articles> newsPojoList, Context context) {
+        this.newsPojoList = newsPojoList;
+        this.context = context;
+    }
+
+
+    @Override
+    public void onAttachedToRecyclerView(@NonNull RecyclerView recyclerView) {
+        super.onAttachedToRecyclerView(recyclerView);
+    }
+
+
+    @NonNull
+    @Override
+    public Adapter_News.ScienceViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View itemView = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.item_news, parent, false);
+        return new Adapter_News.ScienceViewHolder(itemView);
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull Adapter_News.ScienceViewHolder holder, int position) {
+        String url_to_image = newsPojoList.get(position).getUrlToImage();
+        String description = newsPojoList.get(position).getDescription();
+        String see_on = newsPojoList.get(position).getSource().getName();
+
+        String text_3 = see_on + "  " + getFormattedDate(newsPojoList.get(position).getPublishedAt());
+        holder.text_news_1.setText(newsPojoList.get(position).getTitle());
+        holder.text_news_3.setText(text_3);
+
+        if (description == null) {
+            holder.text_news_2.setText(newsPojoList.get(position).getContent());
+        } else {
+            holder.text_news_2.setText(description);
+        }
+        /* вот такую конструкцию я тут соорудил лол)))*/
+        holder.text_news_2.setText(description);
+        try {
+            Picasso.get()
+                    .load(url_to_image)
+                    .placeholder(R.drawable.placehoder)
+                    .transform (new PicassoCircleTransform(25, 0))
+                    .fit()
+                    .centerCrop()
+                    .into(holder.image_news);
+            if (url_to_image == null) {
+                Picasso.get()
+                        .load(R.drawable.placeholder_news)
+                        .transform (new PicassoCircleTransform(25, 0))
+                        .fit()
+                        .centerCrop()
+                        .into(holder.image_news);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            Picasso.get()
+                    .load(R.drawable.no_product)
+                    .into(holder.image_news);
+        }
+    }
+
+
+    //эта шляпа возвращает дату которая приходит от апи "2018-10-27T06:34:39+00:00",
+
+    private String getFormattedDate(String rawDate) {
+        SimpleDateFormat utcFormat = new SimpleDateFormat(RESPONSE_FORMAT, Locale.ROOT);
+        SimpleDateFormat displayedFormat = new SimpleDateFormat(MY_FORMAT, Locale.getDefault());
+        try {
+            Date date = utcFormat.parse(rawDate);
+            return displayedFormat.format(date);
+        } catch (ParseException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public int getItemCount() {
+        return newsPojoList.size();
+    }
+
+
+    class ScienceViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
+        private CardView newsCard;
+        private TextView text_news_1, text_news_2, text_news_3;
+        private ImageView image_news;
+
+        ScienceViewHolder(View view) {
+            super(view);
+            newsCard = view.findViewById(R.id.newsCard);
+            text_news_1 = view.findViewById(R.id.text_title);
+            text_news_2 = view.findViewById(R.id.text_description);
+            text_news_3 = view.findViewById(R.id.text_news_3);
+            image_news = view.findViewById(R.id.image_menu);
+            newsCard.setOnClickListener(this);
+        }
+
+        @Override
+        public void onClick(View v) {
+            CustomTabs.openTab(context, newsPojoList.get(getAdapterPosition()).getUrl());
+        }
+    }
+}
