@@ -1,0 +1,94 @@
+import android.text.style.URLSpan;
+import android.view.View;
+
+public class CustomClickURLSpan extends URLSpan {
+    private OnClickListener mOnClickListener;
+
+    public CustomClickURLSpan(String url) {
+        super(url);
+    }
+
+    public void setOnClickListener(OnClickListener onClickListener) {
+        mOnClickListener = onClickListener;
+    }
+
+    @Override
+    public void onClick(View widget) {
+        if (mOnClickListener == null) {
+            super.onClick(widget);
+        } else {
+            mOnClickListener.onClick(widget, getURL());
+        }
+    }
+
+    public interface OnClickListener {
+        void onClick(View view, String url);
+    }
+}
+
+/** CustomTabsOnClickListener  **/
+package com.example.android.customtabsadvanced;
+
+import android.app.Activity;
+import android.net.Uri;
+import android.support.customtabs.CustomTabsIntent;
+import android.view.View;
+
+import java.lang.ref.WeakReference;
+
+public class CustomTabsOnClickListener implements CustomClickURLSpan.OnClickListener {
+    private WeakReference<Activity> mActivityWeakReference;
+    private WeakReference<CustomTabActivityHelper> mCustomTabActivityHelperWeakReference;
+
+    public CustomTabsOnClickListener(Activity hostActivity,
+                                     CustomTabActivityHelper customTabActivityHelper) {
+        mActivityWeakReference = new WeakReference<>(hostActivity);
+        mCustomTabActivityHelperWeakReference = new WeakReference<>(customTabActivityHelper);
+    }
+
+    @Override
+    public void onClick(View view, String url) {
+        Activity activity = mActivityWeakReference.get();
+        CustomTabActivityHelper customTabActivityHelper =
+                mCustomTabActivityHelperWeakReference.get();
+        if (activity != null && customTabActivityHelper != null) {
+            CustomTabsIntent customTabsIntent = new CustomTabsIntent.Builder(null)
+                    .build();
+            customTabsIntent.intent.setPackage(
+                    CustomTabsHelper.getPackageNameToUse(view.getContext()));
+            customTabsIntent.launchUrl(activity, Uri.parse(url));
+        }
+    }
+}
+
+/** A Utility class with the linkifyUrl methods that creates Spans for the URLs **/
+package com.example.android.customtabsadvanced;
+
+import android.text.Spannable;
+import android.text.Spanned;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public class Util {
+    private static final Pattern URL_PATTERN = Pattern.compile("((http|https|rstp):\\/\\/\\S*)");
+
+    public static void linkifyUrl(
+            Spannable spannable, CustomClickURLSpan.OnClickListener onClickListener) {
+        Matcher m = URL_PATTERN.matcher(spannable);
+        while (m.find()) {
+            String url = spannable.toString().substring(m.start(), m.end());
+            CustomClickURLSpan urlSpan = new CustomClickURLSpan(url);
+            urlSpan.setOnClickListener(onClickListener);
+            spannable.setSpan(urlSpan, m.start(), m.end(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+    }
+}
+
+
+//Code to linkify a text before setting the content of a TextView
+TextView content = (TextView)findViewById(R.id.content);
+Spannable spannable = new SpannableString(post.getText());
+Util.linkifyUrl(spannable, new CustomTabsOnClickListener(this, mCustomTabActivityHelper));
+content.setText(spannable);
+content.setMovementMethod(LinkMovementMethod.getInstance());
