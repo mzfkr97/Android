@@ -1,0 +1,26 @@
+public void getWeather() {
+        progressBarWeather.setVisibility(View.VISIBLE);
+        String units = "metric", lang = "ru";
+        int city_id = 621741;
+
+        compositeDisposable.add(rxConnector.getWeatherAPI()
+            .getToday(city_id, lang, units, Constants.KEY_WEATHER)
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribeWith(new DisposableSingleObserver<Response_Weather>() {
+                @SuppressLint("SetTextI18n")
+                @Override
+                public void onSuccess(@NonNull Response_Weather weatherDay) {
+                    progressBarWeather.setVisibility(View.GONE);
+                    cityField.setText(getString(R.string.slutsk_city));
+                    tvTemp.setText(weatherDay.getTempWithDegree() + " ℃");
+                    Picasso.get().load(weatherDay.getIconUrl()).into(tvImage);
+                }
+
+                @Override
+                public void onError(Throwable e) {
+                    tvTemp.setText("--");
+                    progressBarWeather.setVisibility(View.GONE);
+                }
+            }));
+    }
