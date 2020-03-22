@@ -1,0 +1,189 @@
+
+/**
+ *
+ * это старый способ работы с базой даных , тут все написано ручками , дальше я переписал все под SqliteAssetHelper?
+ * но и тут все прекрасно работает, это хороший пример
+ * https://stackoverflow.com/questions/38419089
+ * /sqlitereadonlydatabaseexception-on-database-update-on-writeable-database*/
+
+public class DatabaseHelper extends SQLiteOpenHelper {
+
+    /*
+    * SELECT * FROM bus_number_time WHERE  bus_number LIKE '2' AND destination ='Мясокомбинат' ORDER BY
+ position_sort ASC;
+
+ SELECT * FROM bus_end_new WHERE  bus_number LIKE '14' ;
+ */
+
+    private static final int DB_VERSION = 6;//re;easr 6
+
+    private static String DB_PATH = "";
+
+    private static String DB_NAME = "slutsk_app_database_1.db";
+
+    private static String TAG = "TAG";
+
+    private final Context myContext;
+    private SQLiteDatabase myDataBase;
+
+    public DatabaseHelper(Context context) {
+        super(context, DB_NAME, null, DB_VERSION);
+        this.myContext = context;
+        createDataBase();
+        try {
+            myDataBase = this.getWritableDatabase();
+        } catch (SQLiteReadOnlyDatabaseException e){
+            myContext.startActivity(new Intent(myContext, DrawerMain.class));
+        }
+
+
+    }
+
+
+    /**
+     * Создает пустую базу данных в системе и переписывает ее с помощью собственной базы данных.
+     */
+
+    private void createDataBase() {
+        if (!checkDB()) {
+            try {
+                copyDataBase();
+            } catch (IOException e) {
+                throw new Error(e + "BaseError copying database");
+            }
+        }
+    }
+
+    public void deleteDataBase(){
+        Log.d(TAG, "!!!!!!!!!!!!!!!!!!!clearDB");
+        if (myDataBase != null && myDataBase.isOpen()){
+            myDataBase.close();
+        }
+
+        File db = new File(myContext.getDatabasePath(DB_NAME).getPath());
+        SQLiteDatabase.deleteDatabase(db);
+        createDataBase();
+
+    }
+    private boolean checkDB() {
+        Log.d(TAG, "!!!!!!!!!!!!!!!!!!!checkDBDataBase");
+        File db = new File(myContext.getDatabasePath(DB_NAME).getPath());
+        if (db.exists()) return true;
+        File data_dir = new File(db.getParent());
+        if (!data_dir.exists()) {
+            data_dir.mkdirs();
+        }
+        return false;
+    }
+
+    /**
+     * Copies your database from your local assets-folder to the just created empty database in the
+     * system folder, from where it can be accessed and handled.
+     * This is done by transfering bytestream.
+     */
+    private void copyDataBase() throws IOException {
+
+        Log.d(TAG, "!!!!!!!!!!!!!!!!!!!copyDataBase");
+
+        String DB_PATH = myContext.getApplicationInfo().dataDir + "/databases/";
+        //Откройте локальный db в качестве входного потока
+        InputStream myInput = myContext.getAssets().open(DB_NAME); //Путь к только что созданному пустому db
+        String outFileName = DB_PATH + DB_NAME; //Откройте пустой бит в качестве выходного потока
+        OutputStream myOutput = new FileOutputStream(outFileName);
+        //передавать байты из входного файла в выходной файл
+        byte[] buffer = new byte[1024];
+        int length;
+        while ((length = myInput.read(buffer)) > 0) {
+            myOutput.write(buffer, 0, length);
+        }
+        //Закрыть потоки
+        myOutput.flush();
+        myOutput.close();
+        myInput.close();
+    }
+
+    //  ПОЛУЧИТЬ
+    public Cursor getAllData(String table_name) {
+        myDataBase = getReadableDatabase();
+        return myDataBase.query(table_name, null, null, null, null, null, null);
+    }
+
+    public void InsertDBStation(long _id, String name, String details, String details_new, String details1){
+        SQLiteDatabase database = getReadableDatabase();
+        ContentValues newValues = new ContentValues();
+
+        newValues.put("_id", _id);
+        newValues.put("name", name);
+        newValues.put("details", details);
+        newValues.put("details_new", details_new);
+        newValues.put("details1", details1);
+
+
+        database.insert("bus_station_favorites", null, newValues);
+        database.close();
+
+    }
+
+    public void deleteDb(String position){
+        SQLiteDatabase database = getReadableDatabase();
+        //myDataBase.delete("bus_station_favorites", null, null);  //работает
+        //myDataBase.execSQL("delete from "+ "bus_station_favorites");  // так тоже
+        database.delete("bus_station_favorites",
+                "_id = ?",
+                new String[] {position});
+        database.close();
+    }
+
+
+
+    public boolean checkDataInFavorites(String searchItem) {
+        SQLiteDatabase database = getReadableDatabase();
+        String[] columns = { "_id" };
+        String selection = "_id" + " =?";
+        String[] selectionArgs = { searchItem };
+        String limit = "1";
+        Cursor cursor = database.query("bus_station_favorites", columns, selection, selectionArgs, null, null, null, limit);
+        //boolean exists = (cursor.getCount() > 0);//
+        //cursor.close();
+        //return exists;
+        if (cursor.getCount() <= 0){
+            cursor.close();
+            closeDB();
+            return false;
+        }else {
+            cursor.close();
+            closeDB();
+            return true;
+        }
+    }
+
+
+
+    public void closeDB() {
+        SQLiteDatabase db = this.getReadableDatabase();
+        if (db != null && db.isOpen())
+            db.close();
+    }
+
+    @Override
+    public synchronized void close() {
+        if (myDataBase != null)
+            myDataBase.close();
+        super.close();
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase db) {
+        Log.d(TAG, "!!!!!!!!!!!!!!!!!!!onCreate");
+
+    }
+    @Override
+    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+
+        if (oldVersion != newVersion) {
+            myContext.deleteDatabase(DB_NAME);
+            //new DatabaseHelper(myContext);
+        }
+    }
+
+}
