@@ -1,0 +1,22 @@
+@Override
+    public void onBackPressed() {
+        //кнопка назад если тулбар открыт  = закрывает если закрыт = выходим
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+        } else {
+            drawerLayout.isDrawerOpen(GravityCompat.END);
+            super.onBackPressed();
+        }
+//        if (doubleBackToExitPressedOnce) {
+//            super.onBackPressed();
+//        }
+//        this.doubleBackToExitPressedOnce = true;
+//        Snackbar.make(toolbar, string.exit, Snackbar.LENGTH_SHORT).show();
+//
+//        new Handler().postDelayed(new Runnable() {
+//            @Override
+//            public void run() {
+//                doubleBackToExitPressedOnce = false;
+//            }
+//        }, EXIT_PERIOD);
+    }
