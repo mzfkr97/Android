@@ -1,0 +1,24 @@
+ @Override
+    public void showNews(NewsPojo newsPojo) {
+        rvNews.setLayoutManager(
+                new GridLayoutManager(getActivity(), 1,
+                        RecyclerView.HORIZONTAL, false));
+
+        newsList = newsPojo.articlesArrayList;
+        if (newsList.isEmpty()) {
+            empty_news_card.setVisibility(View.VISIBLE);
+            progressBarNews.setVisibility(View.GONE);
+        }
+
+        rvNews.setItemAnimator(new DefaultItemAnimator());
+        PagerSnapHelper snapHelper = new PagerSnapHelper();
+        snapHelper.attachToRecyclerView(rvNews);
+
+        rvNews.addItemDecoration(new LinePagerIndicatorDecoration());
+
+        newsAdapter = new NewsAdapter(newsList, getActivity());
+        rvNews.setAdapter(newsAdapter);
+        progressBarNews.setVisibility(View.GONE);
+
+
+    }
