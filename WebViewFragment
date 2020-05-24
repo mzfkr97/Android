@@ -1,0 +1,144 @@
+
+@SuppressLint("SetJavaScriptEnabled")
+public class WebViewFragment extends Fragment implements
+    View.OnClickListener,
+    View.OnKeyListener {
+
+    private FirebaseAnalytics mFirebaseAnalytics;
+
+    private static final String ARG_SECTION_NUMBER = "section_number";
+    private CardView cardView;
+    private WebView webView;
+    private ProgressBar progressBar;
+    private String web_args;
+
+//    public static WebViewFragment newInstance(String url_web_site) {
+//        Bundle args = new Bundle();
+//        args.putString(ARG_SECTION_NUMBER, url_web_site);
+//        WebViewFragment fragment = new WebViewFragment();
+//        fragment.setArguments(args);
+//        return fragment;
+//    }
+
+
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+        View view = inflater.inflate(R.layout.tab_news, container, false);
+        webView = view.findViewById(R.id.webView_1);
+        progressBar = view.findViewById(R.id.progress_news);
+        progressBar.setVisibility(View.VISIBLE);
+        cardView = view.findViewById(R.id.card_connection);
+        cardView.setVisibility(View.GONE);
+
+        if (getActivity() != null) {
+            mFirebaseAnalytics = FirebaseAnalytics.getInstance(getActivity());
+        }
+
+        TextView textError = view.findViewById(R.id.textError);
+        textError.setText(R.string.load_error);
+        TextView textErrorRestart = view.findViewById(R.id.textErrorRestart);
+        textErrorRestart.setText(R.string.trainConnectionError);
+
+        netWorkCheck();
+
+        assert getArguments() != null;
+        web_args = getArguments().getString(ARG_SECTION_NUMBER);
+
+        WebSettings webSettings = webView.getSettings();
+        webSettings.setJavaScriptEnabled(true);
+        webSettings.setBuiltInZoomControls(false);//отменяем зум
+
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+
+
+            webView.loadUrl(web_args);
+
+
+
+        webView.setWebViewClient(new MyWebClient());
+
+        webView.setOnKeyListener(this);
+        textErrorRestart.setOnClickListener(this);
+
+        //fire base log event
+        Bundle bundle = new Bundle();
+        bundle.putString("this_site", web_args);
+        mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SELECT_ITEM, bundle);
+
+        return view;
+    }
+
+    private void netWorkCheck() {
+        if (getActivity() != null) {
+            if (!NetworkChecker.isNetworkAvailable(getActivity())) {
+                cardView.setVisibility(View.VISIBLE);
+                progressBar.setVisibility(View.GONE);
+            }
+        }
+    }
+
+
+    @Override
+    public void onClick(View v) {
+        if (v.getId() == R.id.textErrorRestart) {
+            progressBar.setVisibility(View.VISIBLE);
+            webView.reload();
+            cardView.setVisibility(View.GONE);
+            netWorkCheck();
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        webView.clearCache(true);
+        webView.clearHistory();
+    }
+
+    @Override
+    public boolean onKey(View v, int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == MotionEvent.ACTION_UP && webView.canGoBack()) {
+            handler.sendEmptyMessage(1);
+            return true;
+        }
+        return false;
+    }
+
+    private Handler handler = new Handler(message -> {
+        if (message.what == 1) {
+            webViewGoBack();
+        }
+        return true;
+    });
+
+    private void webViewGoBack() {
+        webView.goBack();
+    }
+
+
+    class MyWebClient extends WebViewClient {
+        @Override
+        public void onPageFinished(WebView view, String url) {
+            progressBar.setVisibility(View.GONE);
+            view.setVisibility(View.VISIBLE);
+            view.bringToFront();
+        }
+
+        public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+            cardView.setVisibility(View.VISIBLE);
+            progressBar.setVisibility(View.GONE);
+        }
+
+        @Override
+        public boolean shouldOverrideUrlLoading(WebView view, String url) {
+            String urlMyFinMobile = "https://m.myfin.by/";
+            if (url.startsWith(web_args) || url.startsWith(urlMyFinMobile)) {
+                view.loadUrl(url);
+            } else {
+                CustomTabs.openTab(getActivity(), url);
+            }
+            return true;
+        }
+    }
+}
