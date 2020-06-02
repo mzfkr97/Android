@@ -1,0 +1,117 @@
+public class KurjerModel implements NewsRepository {
+
+
+    //https://dajver.blogspot.com/2017/11/rx-android.html
+    private static final int TYPE_HEADER = 1;
+    private static final int TYPE_FOOTER = 2;
+
+    @Override
+    public Observable<ArrayList<KurjerNews>> getKurjerNewsData(String urlLink) {
+        return Observable.create(observableEmitter -> {
+            ArrayList<KurjerNews> articlesModels = new ArrayList<>();
+            Document doc = null;
+            try {
+                doc = Jsoup.connect(urlLink).get();
+                Elements views_row_header = doc.select("div.td_module_mx15.td-animation-stack");
+
+                Elements views_row_footer = doc
+                    .select("div.td_block_inner.td-column-3")
+                    .select("div.td-block-row");
+
+                Log.d("TAG","views_row_footer: %s" + views_row_footer.toString());
+
+                Elements block_span = views_row_footer
+                    .select("div.td-block-span4")
+                    .select("div.td_module_mx1.td_module_wrap.td-animation-stack");
+
+                for (Element element : views_row_header) {
+                    Elements header = element.select("div.td-module-thumb");
+                    Elements header1 = element.select("div.td-meta-info-container");
+
+                    Elements module_align = header1
+                        .select("div.td-meta-info-container")
+                        .select("div.td-meta-align");//модуль мета информации
+
+                    String title_news = header
+                        .select("a.td-image-wrap")
+                        .attr("title");//Заголовки описание новости
+
+                    String image_ulr = header
+                        .select("a.td-image-wrap")
+                        .select("img.entry-thumb")
+                        .attr("src");//картинка url
+
+                    String newsCategory = module_align
+                        .select("div.td-big-grid-meta")
+                        .select("a.td-post-category")
+                        .text();//тут получаем название рубрики
+
+                    String pubDate = module_align.select("div.td-module-meta-info")
+                        .select("span.td-post-date")
+                        .select("time.entry-date.updated.td-module-date")
+                        .text();//ДАТА ПУБЛИКАЦИИ
+
+
+                    String webLink = header
+                        .select("a.td-image-wrap").attr("href");//ссылка на новость
+
+//                    Log.d("TAG", "\n module: \n " +
+//                        title_news + "\n" + image_ulr +
+//                        "\n" + newsCategory + "\n" + pubDate +
+//                        "\n url_link: "  + webLink + "\nTYPE_HEADER: " +TYPE_HEADER);
+
+                    KurjerNews kurjerNews = new KurjerNews(
+                        image_ulr,
+                        title_news,
+                        newsCategory,
+                        pubDate,
+                        webLink, TYPE_HEADER
+                    );
+                    articlesModels.add(kurjerNews);
+                }
+
+                for (Element element : block_span) {
+                    Elements module_thumb = element.select("div.td-module-thumb");
+                    Elements meta_info = element.select("div.td-module-meta-info");
+
+                    String title_news = module_thumb
+                        .select("a.td-image-wrap")
+                        .attr("title");//Заголовки описание новости
+
+                    String image_ulr = module_thumb
+                        .select("a.td-image-wrap")
+                        .select("img.entry-thumb")
+                        .attr("src");//картинка url
+
+                    String newsCategory = meta_info
+                        .select("div.td-big-grid-meta")
+                        .select("a.td-post-category")
+                        .text();//тут получаем название рубрики
+
+                    String pubDate = meta_info.select("div.td-editor-date")
+                        .select("span.td-post-date")
+                        .select("time.entry-date.updated.td-module-date")
+                        .text();//ДАТА ПУБЛИКАЦИИ
+
+                    String webLink = meta_info
+                        .select("h3.entry-title.td-module-title")
+                        .select("a").attr("href");//ссылка на новость
+
+                    KurjerNews kurjerNews = new KurjerNews(
+                        image_ulr,
+                        title_news,
+                        newsCategory,
+                        pubDate,
+                        webLink, TYPE_FOOTER
+                    );
+                    articlesModels.add(kurjerNews);
+                }
+                observableEmitter.onNext(articlesModels);
+            }catch (IOException e) {
+                observableEmitter.onError(e);
+            } finally {
+                observableEmitter.onComplete();
+            }
+        });
+    }
+}
