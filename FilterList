@@ -1,0 +1,44 @@
+public class FilterList {
+
+
+    /**
+     * тут мы фильтруем список RecyclerView из фрагмента,о есть реализован поиск по списку
+     * <p>
+     * вызывается вот так:
+     * final List<ItemCatalog> filteredModelList = new FilterList().filterItemCatalog(autoList, newText);
+     */
+
+    //данные ItemCatalog модель
+    public List<ItemCatalog> filterItemCatalog(List<ItemCatalog> models, String query) {
+        query = query.toLowerCase();
+        // models.clear();
+        final List<ItemCatalog> filteredModelList = new ArrayList<>();
+        for (ItemCatalog model : models) {
+            final String text = model.getAddress().toLowerCase();
+            final String text2 = model.getTitle().toLowerCase();
+            if (text.contains(query)) {
+                filteredModelList.add(model);
+            } else
+                //второй текст
+                if (text2.contains(query)) {
+                    filteredModelList.add(model);
+                }
+        }
+        return filteredModelList;
+    }
+
+    //данные ItemListStation модель
+    public List<ItemListStation> filterItemListStation(List<ItemListStation> models, String query) {
+        query = query.toLowerCase();
+        final List<ItemListStation> filteredModelList = new ArrayList<>();
+        for (ItemListStation model : models) {
+            final String text = model.getName().toLowerCase();
+            if (text.contains(query)) {
+                filteredModelList.add(model);
+            }
+        }
+        return filteredModelList;
+    }
+
+
+}
